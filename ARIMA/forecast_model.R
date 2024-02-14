@@ -1,33 +1,30 @@
-# tg_arima model
-# written by ASL, 21 Jan 2023
-# edited 2023-09-08 to consolidate and set up framework for filling in missed dates
+# asl.auto.arima model
+# written by ASL
+
+
+# NOTES: 
+# Need to set this up to iterate through hourly and daily variables
+# Need to incorporate depths
+# Need to deal with binary variables (bernouli distribution)
 
 
 #### Step 0: load packages
 
 library(tidyverse)
-library(neon4cast)
-library(lubridate)
-library(rMR)
-library(glue)
-source("ignore_sigpipe.R")
-library(tsibble)
-library(fable)
-library(arrow)
+#remotes::install_github("LTREB-reservoirs/vera4castHelpers")
+library(vera4castHelpers)
 source("download_target.R")
 library(forecast)
-source("./Generate_forecasts/R/load_met.R")
-source("./Generate_forecasts/R/generate_tg_forecast.R")
-source("./Generate_forecasts/R/run_all_vars.R")
 
-model_themes = c("terrestrial_daily","aquatics","phenology","beetles","ticks") #By default, run model across all themes, except terrestrial 30min (not currently configured)
-model_id = "tg_arima"
+model_id <- "asl.auto.arima"
+priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE)
+model_variables <- priority_daily$`"official" targets name`
 
 #### Define the forecast model for a site
 forecast_model <- function(site,
-                           noaa_past_mean,
-                           noaa_future_daily,
-                           target_variable,
+                           var,
+                           noaa_past_mean = NULL,
+                           noaa_future_daily = NULL,
                            target,
                            horiz,
                            step,
@@ -38,54 +35,51 @@ forecast_model <- function(site,
   
   # Format site data for arima model
   site_target_raw <- target |>
+    dplyr::mutate(datetime = as.Date(datetime)) |>
     dplyr::select(datetime, site_id, variable, observation) |>
-    dplyr::filter(variable == target_variable, 
+    dplyr::filter(variable == var, 
                   site_id == site,
                   datetime < forecast_date) |> 
     tidyr::pivot_wider(names_from = "variable", values_from = "observation")
   
-  if(!target_variable%in%names(site_target_raw)||sum(!is.na(site_target_raw[target_variable]))==0){
-    message(paste0("No target observations at site ",site,". Skipping forecasts at this site."))
+  if(!var %in% names(site_target_raw) || sum(!is.na(site_target_raw[var])) == 0){
+    message(paste0("No target observations at site ", site, 
+                   ". Skipping forecasts at this site."))
     return()
-    
-  } else {
-    
-    if(theme %in% c("ticks","beetles")){
-      site_target = site_target_raw %>%
-        filter(wday(datetime,label = T)=="Mon")|>
-        complete(datetime = full_seq(datetime,step),site_id)
-      #Find the most recent Monday
-      mon = forecast_date-abs(1-as.numeric(strftime(forecast_date, "%u")))
-      h = as.numeric(floor((mon-max(site_target$datetime))/step)+horiz)
-    } else {
-      site_target = site_target_raw |>
-        complete(datetime = full_seq(datetime,1),site_id)
-      h = as.numeric(forecast_date-max(site_target$datetime)+horiz)
-    }
-    
-    # Fit arima model
-    if(sum(site_target[target_variable]<0,na.rm=T)>0){#If there are any negative values, don't consider transformation
-      fit = auto.arima(site_target[target_variable])
-    } else {
-      fit = auto.arima(site_target[target_variable], lambda = "auto")
-    }
-    
-    # use the model to forecast target variable
-    forecast_raw <- as.data.frame(forecast(fit,h=h,level=0.68))%>% #One SD
-      mutate(sigma = `Hi 68`-`Point Forecast`)
-    
-    forecast = data.frame(datetime = (1:h)*step+max(site_target$datetime),
-                          reference_datetime = forecast_date,
-                          site_id = site,
-                          family = "normal",
-                          variable = target_variable,
-                          mu = as.numeric(forecast_raw$`Point Forecast`),
-                          sigma = as.numeric(forecast_raw$sigma),
-                          model_id = model_id)%>%
-      pivot_longer(cols = c(mu,sigma), names_to = "parameter",values_to = "prediction")%>%
-      select(model_id, datetime, reference_datetime,
-             site_id, family, parameter, variable, prediction)
-    return(forecast)
   }
+
+  site_target = site_target_raw |>
+    complete(datetime = full_seq(datetime, 1), site_id)
+
+  h = as.numeric(forecast_date - max(site_target$datetime)+horiz)
+
+  # Fit arima model
+  if(sum(site_target[var] < 0, na.rm=T) > 0){ #If there are any negative values, don't consider transformation
+    fit = auto.arima(site_target[var])
+  } else {
+    fit = auto.arima(site_target[var], lambda = "auto")
+  }
+  
+  # use the model to forecast target variable
+  forecast_raw <- as.data.frame(forecast(fit, h = h, level=0.68))%>% #One SD
+    mutate(sigma = `Hi 68`-`Point Forecast`)
+  
+  forecast = data.frame(project_id = "vera4cast",
+                        model_id = model_id,
+                        datetime = (1:h)*step+max(site_target$datetime),
+                        reference_datetime = forecast_date,
+                        duration = "P1D",
+                        depth_m = NA,
+                        site_id = site,
+                        family = "normal",
+                        variable = var,
+                        mu = as.numeric(forecast_raw$`Point Forecast`),
+                        sigma = as.numeric(forecast_raw$sigma)
+                        )%>%
+    pivot_longer(cols = c(mu,sigma), names_to = "parameter",values_to = "prediction")%>%
+    select(project_id, model_id, datetime, reference_datetime, duration, depth_m,
+           site_id, family, parameter, variable, prediction)
+  
+  return(forecast)
 }
 
