@@ -1,25 +1,25 @@
-source("./R/run_all_vars.R")
+source("./R/run_all_sites.R")
+source("./R/run_all_depths.R")
 
 generate_tg_forecast <- function(forecast_date,
                                  forecast_model,
                                  model_variables = model_variables,
                                  model_id = model_id,
                                  all_sites = F, #Whether the model is /trained/ across all sites
-                                 sites = c("bvre", "fcre", "tubr"), #Sites to forecast
+                                 sites = "all", #Sites to forecast
                                  noaa = T,
-                                 depth = 'target') {
+                                 target_depths = "target") {
   
   ### Step 1: Set forecast specifications
-  
   horiz = 35
   step = 1
-  vars = c("Turbidity_FNU_mean")
   
-  if (depth == 'target') {
-    # only generates forecasts for target depths
+  if (target_depths == "target") {
     target_depths <- c(1.5, 1.6, NA)
-  } else {
-    target_depths <- depth
+  } 
+  
+  if(sites == "all"){
+    sites <- c("bvre", "fcre", "tubr")
   }
   
   ### Step 2: Get NOAA driver data (if needed)
@@ -32,6 +32,7 @@ generate_tg_forecast <- function(forecast_date,
     # Load stage3 data. 
     noaa_past_mean <- read.csv(paste0("./Generate_forecasts/noaa_downloads/noaa_past_mean_",forecast_date,".csv")) |> 
       mutate(datetime = lubridate::as_date(datetime))
+    
   } else {
     forecast_date <- as.Date(forecast_date)
     noaa_future_daily <- NULL
@@ -39,13 +40,19 @@ generate_tg_forecast <- function(forecast_date,
   }
   
   ### Step 3: Download latest target data
-  target = download_target()
+  target_raw <- download_target()
+  # Summarize to daily means
+  target<- target_raw |> 
+    mutate(datetime = as.Date(datetime)) |>
+    group_by(site_id, variable, datetime, depth_m) |> 
+    summarise(observation = mean(observation, na.rm = T),
+              .groups = "drop")
   
   ### Step 4: forecast!
   
-  ## Test with a single site first!
-  #forecast <- map_dfr(vars,
-  #                    run_all_vars,
+  ## Test with a single site/variable/depth first!
+  #forecast <- map_dfr(.x = model_variables[1],
+  #                    .f = run_all_sites,
   #                    sites = sites[1],
   #                    forecast_model = forecast_model,
   #                    noaa_past_mean = noaa_past_mean,
@@ -54,7 +61,8 @@ generate_tg_forecast <- function(forecast_date,
   #                    horiz = horiz,
   #                    step = step,
   #                    theme = theme,
-  #                    forecast_date = forecast_date)
+  #                    forecast_date = forecast_date,
+  #                    target_depths = target_depths[1])
   
   #Visualize the ensemble predictions -- what do you think?
   #forecast |> 
@@ -62,10 +70,11 @@ generate_tg_forecast <- function(forecast_date,
   #  geom_line(alpha=0.3) +
   #  facet_wrap(~variable, scales = "free")
   
-  # Run all sites -- may be slow!
+  # Run all variables -- may be slow!
   if(all_sites == F) {
-    forecast <- map_dfr(vars,
-                        run_all_vars,
+    # Run all sites and depths individually for each variable
+    forecast <- map_dfr(.x = model_variables,
+                        .f = run_all_sites,
                         sites = sites,
                         forecast_model = forecast_model,
                         noaa_past_mean = noaa_past_mean,
@@ -74,10 +83,12 @@ generate_tg_forecast <- function(forecast_date,
                         horiz = horiz,
                         step = step,
                         theme = theme,
-                        forecast_date = forecast_date)
+                        forecast_date = forecast_date,
+                        target_depths = target_depths)
   } else {
-    forecast <- map_dfr(vars,
-                        forecast_model,
+    # Fit model across all sites together for each variable
+    forecast <- map_dfr(.x = model_variables,
+                        .f = run_all_depths,
                         sites = sites,
                         noaa_past_mean = noaa_past_mean,
                         noaa_future_daily = noaa_future_daily,
@@ -85,7 +96,8 @@ generate_tg_forecast <- function(forecast_date,
                         horiz = horiz,
                         step = step,
                         theme = theme,
-                        forecast_date = forecast_date)
+                        forecast_date = forecast_date,
+                        target_depths = target_depths)
   }
   
   ### Step 5: Format and submit
@@ -95,5 +107,5 @@ generate_tg_forecast <- function(forecast_date,
   write_csv(forecast, forecast_file)
   
   # Submit
-  vera4castHelpers::submit(forecast_file = forecast_file) #first_submission = FALSE
+  #vera4castHelpers::submit(forecast_file = forecast_file) #first_submission = FALSE
 }

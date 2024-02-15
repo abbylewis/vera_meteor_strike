@@ -1,5 +1,5 @@
-#Quick function to repeat for all variables
-run_all_vars = function(var,
+#Quick function to repeat for all sites
+run_all_sites = function(var,
                         sites,
                         forecast_model,
                         noaa_past_mean,
@@ -8,11 +8,13 @@ run_all_vars = function(var,
                         horiz,
                         step,
                         theme,
-                        forecast_date) {
+                        forecast_date,
+                        target_depths) {
   
   message(paste0("Running variable: ", var))
-  forecast <- map_dfr(sites,
-                      forecast_model,
+  forecast <- map_dfr(.x = sites,
+                      .f = run_all_depths,
+                      forecast_model = forecast_model,
                       noaa_past_mean = noaa_past_mean,
                       noaa_future_daily = noaa_future_daily,
                       var = var,
@@ -20,6 +22,7 @@ run_all_vars = function(var,
                       horiz = horiz,
                       step = step,
                       theme = theme,
-                      forecast_date = forecast_date)
+                      forecast_date = forecast_date,
+                      target_depths = target_depths)
   
 }

@@ -3,9 +3,9 @@
 
 
 # NOTES: 
-# Need to set this up to iterate through hourly and daily variables
+# Currently only set up for daily variables
+# ARIMA does not work for binary variables
 # Need to incorporate depths
-# Need to deal with binary variables (bernouli distribution)
 
 
 #### Step 0: load packages
@@ -16,12 +16,16 @@ library(vera4castHelpers)
 source("download_target.R")
 library(forecast)
 
+#### Step 1: Load forecast variables
 model_id <- "asl.auto.arima"
-priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE)
+priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
+  dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
 
-#### Define the forecast model for a site
-forecast_model <- function(site,
+
+#### Step 2: Define the forecast model
+forecast_model <- function(specific_depth,
+                           site,
                            var,
                            noaa_past_mean = NULL,
                            noaa_future_daily = NULL,
@@ -31,15 +35,26 @@ forecast_model <- function(site,
                            theme,
                            forecast_date) {
   
-  message(paste0("Running site: ", site))
+  message(paste0("Running depth: ", specific_depth))
   
   # Format site data for arima model
-  site_target_raw <- target |>
+  site_target_trimmed <- target |>
     dplyr::mutate(datetime = as.Date(datetime)) |>
-    dplyr::select(datetime, site_id, variable, observation) |>
+    dplyr::select(datetime, site_id, variable, observation, depth_m) |>
     dplyr::filter(variable == var, 
                   site_id == site,
-                  datetime < forecast_date) |> 
+                  datetime < forecast_date) 
+  
+  # Isolate target depth
+  if(is.na(specific_depth)){
+    site_target_raw = site_target_trimmed %>% filter(is.na(depth_m))
+  } else {
+    site_target_raw = site_target_trimmed |>
+      dplyr::filter(depth_m == specific_depth)
+  }
+  
+  # Format
+  site_target_raw <- site_target_raw |>
     tidyr::pivot_wider(names_from = "variable", values_from = "observation")
   
   if(!var %in% names(site_target_raw) || sum(!is.na(site_target_raw[var])) == 0){
@@ -54,9 +69,14 @@ forecast_model <- function(site,
   h = as.numeric(forecast_date - max(site_target$datetime)+horiz)
 
   # Fit arima model
-  if(sum(site_target[var] < 0, na.rm=T) > 0){ #If there are any negative values, don't consider transformation
+  # If there are any non-positive values, don't consider transformation
+  if(sum(site_target[var] < 0, na.rm=T) > 0){ 
     fit = auto.arima(site_target[var])
   } else {
+    # Otherwise, use lambda = "auto"
+    ts <- site_target[var]
+    ts[ts == 0] <- min(ts[!is.na(ts) & ts > 0], na.rm = T)/2 #Deal with 0s before transformation
+    message("I ran with transformation. Min value is ", min(ts, na.rm = T))
     fit = auto.arima(site_target[var], lambda = "auto")
   }
   
@@ -69,7 +89,7 @@ forecast_model <- function(site,
                         datetime = (1:h)*step+max(site_target$datetime),
                         reference_datetime = forecast_date,
                         duration = "P1D",
-                        depth_m = NA,
+                        depth_m = specific_depth,
                         site_id = site,
                         family = "normal",
                         variable = var,

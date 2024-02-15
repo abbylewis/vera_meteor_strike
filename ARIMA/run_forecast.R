@@ -6,6 +6,6 @@ tryCatch({
                        forecast_model = forecast_model,
                        model_variables = model_variables,
                        model_id = model_id,
-                       depth = 'target',
+                       target_depths = 'target',
                        noaa = F)
 }, error=function(e){cat("ERROR with forecast generation:\n",conditionMessage(e), "\n")})
