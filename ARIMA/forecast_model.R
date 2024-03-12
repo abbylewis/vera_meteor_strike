@@ -22,6 +22,7 @@ model_variables <- priority_daily$`"official" targets name`
 # Global parameters used in generate_tg_forecast()
 all_sites = F #Whether the model is /trained/ across all sites
 sites = "all" #Sites to forecast
+target_depths = "target" #Depths to forecast
 noaa = F #Whether the model requires NOAA data
 
 

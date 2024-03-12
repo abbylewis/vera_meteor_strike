@@ -1,40 +1,55 @@
-# tg_temp_lm model
-# written by ASL, 21 Jan 2023
-# edited 2023-09-08 to consolidate and set up framework for filling in missed dates
+# asl.temp.lm model
+# written by ASL
 
 
 #### Step 0: load packages
 
+#library(tidyverse)
+#library(neon4cast)
+#library(lubridate)
+#library(rMR)
+#library(glue)
+#library(tsibble)
+#library(fable)
+#library(arrow)
+#source("download_target.R")
+#source("./R/load_met.R")
+#source("./R/generate_tg_forecast.R")
+#source("./R/run_all_vars.R")
+
 library(tidyverse)
-library(neon4cast)
-library(lubridate)
-library(rMR)
-library(glue)
-library(tsibble)
-library(fable)
-library(arrow)
+#remotes::install_github("LTREB-reservoirs/vera4castHelpers")
+#remotes::install_github("eco4cast/read4cast")
+library(vera4castHelpers)
+library(read4cast)
 source("download_target.R")
-source("./R/load_met.R")
-source("./R/generate_tg_forecast.R")
-source("./R/run_all_vars.R")
+#library(forecast)
 
-url <- "https://renc.osn.xsede.org/bio230121-bucket01/vera4cast/targets/project_id=vera4cast/duration=P1D/daily-insitu-targets.csv.gz"
-targets <- read_csv(url, show_col_types = FALSE)
-
-model_id = "tg_temp_lm"
+#### Step 1: Set model specifications
+model_id <- "asl.temp.lm"
+# Currently only set up for daily variables, and not binary variables
+priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
+  dplyr::filter(!grepl("binary", `"official" targets name`))
+model_variables <- priority_daily$`"official" targets name`
+# Global parameters used in generate_tg_forecast()
+all_sites = F #Whether the model is /trained/ across all sites
+sites = "all" #Sites to forecast
+target_depths = "target" #Depths to forecast
+noaa = T #Whether the model requires NOAA data
 
 #### Define the forecast model for a site
-forecast_model <- function(site,
+forecast_model <- function(specific_depth,
+                           site,
+                           var,
                            noaa_past_mean,
                            noaa_future_daily,
-                           target_variable,
                            target,
                            horiz,
                            step,
                            theme,
                            forecast_date) {
   
-  message(paste0("Running site: ", site))
+  message(paste0("Running depth: ", specific_depth))
 
   # Merge in past NOAA data into the targets file, matching by date.
   site_target <- target |>

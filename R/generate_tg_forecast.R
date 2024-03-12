@@ -1,14 +1,15 @@
 source("./R/run_all_sites.R")
 source("./R/run_all_depths.R")
+source("./R/load_met.R")
 
 generate_tg_forecast <- function(forecast_date,
                                  forecast_model,
                                  model_variables,
                                  model_id,
-                                 all_sites = F, #Whether the model is /trained/ across all sites
-                                 sites = "all", #Sites to forecast
+                                 all_sites = all_sites, #Whether the model is /trained/ across all sites
+                                 sites = sites, #Sites to forecast
                                  noaa = T,
-                                 target_depths = "target") {
+                                 target_depths = target_depths) {
   
   ### Step 1: Set forecast specifications
   horiz = 35

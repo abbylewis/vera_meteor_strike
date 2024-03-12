@@ -1,6 +1,10 @@
-load_met <- function(forecast_date) {
+library(devtools)
+SourceURL <- "https://raw.githubusercontent.com/LTREB-reservoirs/vera4cast/main/drivers/download_ensemble_forecast.R"
+source_url(SourceURL)
+
+load_met <- function(forecast_date, sites) {
   
-  if(file.exists(paste0("./Generate_forecasts/noaa_downloads/noaa_future_daily_",forecast_date,".csv"))){
+  if(file.exists(paste0("./noaa_downloads/noaa_future_daily_",forecast_date,".csv"))){
     message(paste0("Met data has already been saved for reference date: ",forecast_date))
     return()
   } else {
@@ -20,22 +24,18 @@ load_met <- function(forecast_date) {
                  "northward_wind",
                  "eastward_wind")
   
-  #We're going to get data for all sites, so as to not have to re-load data for the same sites
-  site_data <- readr::read_csv("https://raw.githubusercontent.com/eco4cast/neon4cast-targets/main/NEON_Field_Site_Metadata_20220412.csv")
-  all_sites = site_data$field_site_id
-  
-  #Code from Freya Olsson to download and format meteorological data (had to be modified to deal with arrow issue on M1 mac). Major thanks to Freya here!!
-  
   # Load stage 2 data
-  endpoint = "data.ecoforecast.org"
-  use_bucket <- paste0("neon4cast-drivers/noaa/gefs-v12/stage2/parquet/0/", noaa_date)
-  use_s3 <- arrow::s3_bucket(use_bucket, endpoint_override = endpoint, anonymous = TRUE)
+  use_s3 <- arrow::s3_bucket("bio230121-bucket01/flare/drivers/met/ensemble_forecast",
+                         endpoint_override = "renc.osn.xsede.org",
+                         access_key = Sys.getenv("OSN_KEY"),
+                         secret_key = Sys.getenv("OSN_SECRET"))
+  
   noaa_future <- arrow::open_dataset(use_s3) |>
     dplyr::collect() |>
-    dplyr::filter(site_id %in% all_sites,
+    dplyr::filter(site_id %in% sites,
                   datetime >= forecast_date,
                   parameter <= 31,
-                  variable == variables) #It would be more efficient to filter before collecting, but this is not running on my M1 mac
+                  variable %in% variables) #It would be more efficient to filter before collecting, but this is not running on my M1 mac
   
   # Format met forecasts
   noaa_future_daily <- noaa_future |> 
