@@ -12,15 +12,20 @@
 
 library(tidyverse)
 #remotes::install_github("LTREB-reservoirs/vera4castHelpers")
+#remotes::install_github("eco4cast/read4cast")
 library(vera4castHelpers)
+library(read4cast)
 source("download_target.R")
 library(forecast)
 
-#### Step 1: Load forecast variables
+#### Step 1: Set model specifications
 model_id <- "asl.auto.arima"
 priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
   dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
+all_sites = F #Whether the model is /trained/ across all sites
+sites = "all" #Sites to forecast
+noaa = F
 
 
 #### Step 2: Define the forecast model

@@ -6,6 +6,12 @@ tryCatch({
                        forecast_model = forecast_model,
                        model_variables = model_variables,
                        model_id = model_id,
+                       all_sites = all_sites,
+                       sites = sites,
                        target_depths = 'target',
                        noaa = F)
 }, error=function(e){cat("ERROR with forecast generation:\n",conditionMessage(e), "\n")})
+
+#For troubleshooting
+#forecast_date = Sys.Date()
+#target_depths = 'target'

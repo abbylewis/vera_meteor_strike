@@ -3,8 +3,8 @@ source("./R/run_all_depths.R")
 
 generate_tg_forecast <- function(forecast_date,
                                  forecast_model,
-                                 model_variables = model_variables,
-                                 model_id = model_id,
+                                 model_variables,
+                                 model_id,
                                  all_sites = F, #Whether the model is /trained/ across all sites
                                  sites = "all", #Sites to forecast
                                  noaa = T,
@@ -106,6 +106,14 @@ generate_tg_forecast <- function(forecast_date,
   forecast_file <- paste0("daily-", forecast_date, "-", model_id, ".csv.gz")
   write_csv(forecast, forecast_file)
   
+  forecast %>%
+    pivot_wider(names_from = "parameter", values_from = "prediction") %>%
+    mutate(site_depth = paste0(site_id, "_", depth_m)) %>%
+    ggplot(aes(x = datetime)) +
+    geom_line(aes(y = mu)) +
+    geom_ribbon(aes(ymin = mu - sigma, ymax = mu + sigma), alpha = 0.3) +
+    facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
+  
   # Submit
-  #vera4castHelpers::submit(forecast_file = forecast_file) #first_submission = FALSE
+  vera4castHelpers::submit(forecast_file = forecast_file, first_submission = FALSE)
 }
