@@ -2,12 +2,6 @@
 # written by ASL
 
 
-# NOTES: 
-# Currently only set up for daily variables
-# ARIMA does not work for binary variables
-# Need to incorporate depths
-
-
 #### Step 0: load packages
 
 library(tidyverse)
@@ -20,12 +14,15 @@ library(forecast)
 
 #### Step 1: Set model specifications
 model_id <- "asl.auto.arima"
+# Currently only set up for daily variables
+# ARIMA does not work for binary variables
 priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
   dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
+# Global parameters used in generate_tg_forecast()
 all_sites = F #Whether the model is /trained/ across all sites
 sites = "all" #Sites to forecast
-noaa = F
+noaa = F #Whether the model requires NOAA data
 
 
 #### Step 2: Define the forecast model
@@ -81,7 +78,7 @@ forecast_model <- function(specific_depth,
     # Otherwise, use lambda = "auto"
     ts <- site_target[var]
     ts[ts == 0] <- min(ts[!is.na(ts) & ts > 0], na.rm = T)/2 #Deal with 0s before transformation
-    message("I ran with transformation. Min value is ", min(ts, na.rm = T))
+    message("Model run with transformation. Min value is ", min(ts, na.rm = T))
     fit = auto.arima(site_target[var], lambda = "auto")
   }
   

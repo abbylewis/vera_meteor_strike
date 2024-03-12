@@ -14,7 +14,7 @@ generate_tg_forecast <- function(forecast_date,
   horiz = 35
   step = 1
   
-  if (target_depths == "target") {
+  if (length(target_depths) == 1 & target_depths == "target") {
     target_depths <- c(1.5, 1.6, NA)
   } 
   
@@ -106,6 +106,7 @@ generate_tg_forecast <- function(forecast_date,
   forecast_file <- paste0("daily-", forecast_date, "-", model_id, ".csv.gz")
   write_csv(forecast, forecast_file)
   
+  #Visualize
   forecast %>%
     pivot_wider(names_from = "parameter", values_from = "prediction") %>%
     mutate(site_depth = paste0(site_id, "_", depth_m)) %>%

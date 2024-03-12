@@ -1,6 +1,5 @@
-END <- as_date('2023-11-13') #Re-run if forecasts have not been re-run after Nov 13, fixing calibration issue
 
-rerun_forecasts <- function(model_id, forecast_model, model_themes, END, noaa = T, all_sites = F) {
+rerun_forecasts <- function(model_id, forecast_model, model_themes, END, noaa, all_sites) {
   ### Some code to fill in missing forecasts
   # Dates of forecasts 
   end_date <- paste(Sys.Date() - days(2), '00:00:00') #Yesterday's forecasts might not have been processed. Wait to redo
