@@ -19,6 +19,6 @@ jobs:
       - name: install R packages
         run: R -e 'source("install.R")' 
       - name: Run automatic prediction file (ARIMA)
-        run: Rscript ./Generate_forecasts/ARIMA/run_forecast.R
+        run: Rscript ./ARIMA/run_forecast.R
       #- name: Back fill forecasts
-      #  run: Rscript ./Generate_forecasts/ARIMA/rerun_forecasts.R
+      #  run: Rscript ./ARIMA/rerun_forecasts.R
