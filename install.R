@@ -1,0 +1,6 @@
+#install.packages("rMR")
+#install.packages("decor")
+#install.packages("glmnet")
+#install.packages("smooth")
+#install.packages("baguette")
+#remotes::install_github('eco4cast\neon4cast')

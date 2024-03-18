@@ -1,0 +1,24 @@
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 20 * * *"
+#  push:
+
+name: ASL meteor strike - ARIMA
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rqthomas/vera-rocker:latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: install R packages
+        run: R -e 'source("install.R")' 
+      - name: Run automatic prediction file (ARIMA)
+        run: Rscript ./Generate_forecasts/ARIMA/run_forecast.R
+      #- name: Back fill forecasts
+      #  run: Rscript ./Generate_forecasts/ARIMA/rerun_forecasts.R
