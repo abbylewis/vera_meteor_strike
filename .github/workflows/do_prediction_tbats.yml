@@ -1,0 +1,24 @@
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 20 * * *"
+#  push:
+
+name: ASL meteor strike - TBATS
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rqthomas/vera-rocker:latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: install R packages
+        run: R -e 'source("install.R")' 
+      - name: Run automatic prediction file (TBATS)
+        run: Rscript ./TBATS/run_forecast.R
+      #- name: Back fill forecasts
+      #  run: Rscript ./TBATS/rerun_forecasts.R

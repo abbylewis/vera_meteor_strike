@@ -81,7 +81,7 @@ forecast_model <- function(specific_depth,
     ts_data_interp = na.interp(ts_data)
   }
   
-  # Fit tbats with interpolated data
+  # Fit ets with interpolated data
   fit = ets(ts_data_interp)
   
   # use the model to forecast target variable

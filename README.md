@@ -4,8 +4,9 @@ Simple empirical forecasts for the VERA forecasting challenge
 
 ## Models currently set up:
 
--   asl.auto.arima (not yet automated)
--   asl.ets (not yet automated)
+-   asl.auto.arima
+-   asl.ets
+-   asl.tbats
 
 ## TO DO:
 
@@ -14,7 +15,7 @@ Simple empirical forecasts for the VERA forecasting challenge
 3.  asl.temp.lm model
 4.  asl.temp.lm.all.sites model
 5.  asl.met.lm model (linear model with multiple met vars)
-6.  Figure out if we want to add auto_adam, nnetar, tbats
+6.  Figure out if we want to add auto_adam, nnetar
 
 ## To add new models
 
