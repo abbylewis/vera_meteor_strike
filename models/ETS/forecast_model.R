@@ -1,22 +1,20 @@
-# asl.tbats model
-# written by ASL, 21 Jan 2023
-
-
+# asl.ets model
+# written by ASL
 
 #### Step 0: load packages
 
 library(tidyverse)
 #remotes::install_github("LTREB-reservoirs/vera4castHelpers")
-library(vera4castHelpers)
 #remotes::install_github("eco4cast/read4cast")
+library(vera4castHelpers)
 library(read4cast)
-source("download_target.R")
+source("./R/download_target.R")
 library(forecast)
 
 #### Step 1: Set model specifications
-model_id <- "asl.tbats"
+model_id <- "asl.ets"
 # Currently only set up for daily variables
-# TBATS does not work for binary variables
+# ETS does not work for binary variables
 priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
   dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
@@ -26,7 +24,7 @@ sites = "all" #Sites to forecast
 target_depths = "target" #Depths to forecast
 noaa = F #Whether the model requires NOAA data
 
-#### Step 2: Define the forecast model
+#### Define the forecast model for a site
 forecast_model <- function(specific_depth,
                            site,
                            var,
@@ -40,7 +38,7 @@ forecast_model <- function(specific_depth,
   
   message(paste0("Running depth: ", specific_depth))
   
-  # Format site data for model
+  # Format site data for ETS model
   site_target_trimmed <- target |>
     dplyr::mutate(datetime = as.Date(datetime)) |>
     dplyr::select(datetime, site_id, variable, observation, depth_m) |>
@@ -56,7 +54,7 @@ forecast_model <- function(specific_depth,
       dplyr::filter(depth_m == specific_depth)
   }
   
-  # Format site data for model
+  # Format
   site_target_raw <- site_target_raw |>
     tidyr::pivot_wider(names_from = "variable", values_from = "observation")
   
@@ -70,7 +68,7 @@ forecast_model <- function(specific_depth,
     complete(datetime = full_seq(datetime, 1), site_id)
   
   h = as.numeric(forecast_date - max(site_target$datetime)+horiz)
-  
+    
   ts_data = as.ts(site_target[var])
   
   #If all data are positive, apply the correct transformation
@@ -83,8 +81,8 @@ forecast_model <- function(specific_depth,
     ts_data_interp = na.interp(ts_data)
   }
   
-  # Fit tbats with interpolated data
-  fit = tbats(ts_data_interp)
+  # Fit ets with interpolated data
+  fit = ets(ts_data_interp)
   
   # use the model to forecast target variable
   forecast_raw <- as.data.frame(forecast(fit,h=h,level=0.68))%>% #One SD
@@ -101,7 +99,7 @@ forecast_model <- function(specific_depth,
                         variable = var,
                         mu = as.numeric(forecast_raw$`Point Forecast`),
                         sigma = as.numeric(forecast_raw$sigma)
-  ) %>%
+  )%>%
     pivot_longer(cols = c(mu,sigma), names_to = "parameter",values_to = "prediction")%>%
     select(project_id, model_id, datetime, reference_datetime, duration, depth_m,
            site_id, family, parameter, variable, prediction)

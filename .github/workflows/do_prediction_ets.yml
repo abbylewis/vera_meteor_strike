@@ -17,8 +17,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: install R packages
-        run: R -e 'source("install.R")' 
+        run: R -e 'source("./R/install.R")' 
       - name: Run automatic prediction file (ETS)
-        run: Rscript ./ETS/run_forecast.R
+        run: Rscript ./models/ETS/run_forecast.R
       #- name: Back fill forecasts
-      #  run: Rscript ./ETS/rerun_forecasts.R
+      #  run: Rscript ./models/ETS/rerun_forecasts.R

@@ -1,20 +1,21 @@
-# asl.ets model
+# asl.auto.arima model
 # written by ASL
+
 
 #### Step 0: load packages
 
 library(tidyverse)
 #remotes::install_github("LTREB-reservoirs/vera4castHelpers")
-#remotes::install_github("eco4cast/read4cast")
 library(vera4castHelpers)
+#remotes::install_github("eco4cast/read4cast")
 library(read4cast)
-source("download_target.R")
+source("./R/download_target.R")
 library(forecast)
 
 #### Step 1: Set model specifications
-model_id <- "asl.ets"
+model_id <- "asl.auto.arima"
 # Currently only set up for daily variables
-# ETS does not work for binary variables
+# ARIMA does not work for binary variables
 priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
   dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
@@ -24,7 +25,8 @@ sites = "all" #Sites to forecast
 target_depths = "target" #Depths to forecast
 noaa = F #Whether the model requires NOAA data
 
-#### Define the forecast model for a site
+
+#### Step 2: Define the forecast model
 forecast_model <- function(specific_depth,
                            site,
                            var,
@@ -38,7 +40,7 @@ forecast_model <- function(specific_depth,
   
   message(paste0("Running depth: ", specific_depth))
   
-  # Format site data for ETS model
+  # Format site data for arima model
   site_target_trimmed <- target |>
     dplyr::mutate(datetime = as.Date(datetime)) |>
     dplyr::select(datetime, site_id, variable, observation, depth_m) |>
@@ -63,29 +65,26 @@ forecast_model <- function(specific_depth,
                    ". Skipping forecasts at this site."))
     return()
   }
-  
+
   site_target = site_target_raw |>
     complete(datetime = full_seq(datetime, 1), site_id)
-  
+
   h = as.numeric(forecast_date - max(site_target$datetime)+horiz)
-    
-  ts_data = as.ts(site_target[var])
-  
-  #If all data are positive, apply the correct transformation
-  if(sum(ts_data < 0, na.rm=T) == 0){ #if there are no negative values, consider transformation
-    #Deal with 0s before transformation
-    ts_data[ts_data == 0] <- 
-      min(ts_data[!is.na(ts_data) & ts_data > 0], na.rm = T)/2 
-    ts_data_interp = na.interp(ts_data, lambda = "auto")
+
+  # Fit arima model
+  # If there are any non-positive values, don't consider transformation
+  if(sum(site_target[var] < 0, na.rm=T) > 0){ 
+    fit = auto.arima(site_target[var])
   } else {
-    ts_data_interp = na.interp(ts_data)
+    # Otherwise, use lambda = "auto"
+    ts <- site_target[var]
+    ts[ts == 0] <- min(ts[!is.na(ts) & ts > 0], na.rm = T)/2 #Deal with 0s before transformation
+    message("Model run with transformation. Min value is ", min(ts, na.rm = T))
+    fit = auto.arima(site_target[var], lambda = "auto")
   }
   
-  # Fit ets with interpolated data
-  fit = ets(ts_data_interp)
-  
   # use the model to forecast target variable
-  forecast_raw <- as.data.frame(forecast(fit,h=h,level=0.68))%>% #One SD
+  forecast_raw <- as.data.frame(forecast(fit, h = h, level=0.68))%>% #One SD
     mutate(sigma = `Hi 68`-`Point Forecast`)
   
   forecast = data.frame(project_id = "vera4cast",
@@ -99,10 +98,11 @@ forecast_model <- function(specific_depth,
                         variable = var,
                         mu = as.numeric(forecast_raw$`Point Forecast`),
                         sigma = as.numeric(forecast_raw$sigma)
-  )%>%
+                        )%>%
     pivot_longer(cols = c(mu,sigma), names_to = "parameter",values_to = "prediction")%>%
     select(project_id, model_id, datetime, reference_datetime, duration, depth_m,
            site_id, family, parameter, variable, prediction)
   
   return(forecast)
 }
+
