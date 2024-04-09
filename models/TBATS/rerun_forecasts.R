@@ -1,4 +1,4 @@
-source("./TBATS/forecast_model.R")
+source("./models/TBATS/forecast_model.R")
 source("./R/rerun_forecasts.R")
 
 END <- as_date('2024-03-20') #Used to fix issues if needed

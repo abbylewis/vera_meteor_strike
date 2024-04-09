@@ -1,4 +1,4 @@
-source("./ETS/forecast_model.R")
+source("./models/ETS/forecast_model.R")
 source("./R/generate_tg_forecast.R")
 
 tryCatch({

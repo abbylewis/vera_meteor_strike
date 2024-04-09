@@ -13,6 +13,7 @@ editor: visual
 ## Load packages
 ```{r packages}
 source("../R/download_target.R")
+remotes::install_github('FLARE-forecast/RopenMeteo') # R interface with API OpenMeteo - weather forecasts
 library(RopenMeteo)
 library(tidyverse)
 library(ggpmisc)
@@ -42,26 +43,8 @@ weather_dat <- RopenMeteo::get_ensemble_forecast(
   # function to convert to EFI standard
   RopenMeteo::convert_to_efi_standard() |>
   # rename variables to match met station
-  mutate(site_id = 'fcre',
-         variable = ifelse(variable == "air_temperature", 
-                           "AirTemp_C_mean", variable),
-         prediction = ifelse(variable == "AirTemp_C_mean",
-                           prediction - 273.15, prediction), #Update units from K
-         variable = ifelse(variable == "precipitation_flux", 
-                           "Rain_mm_sum", variable),
-         prediction = ifelse(variable == "Rain_mm_sum",
-                           prediction * 60 * 60, prediction), #Not sure of units
-         variable = ifelse(variable == "relative_humidity", 
-                           "RH_percent_mean", variable),
-         prediction = ifelse(variable == "RH_percent_mean",
-                           prediction * 100, prediction), #Update units to %
-         variable = ifelse(variable == "wind_speed", 
-                           "WindSpeed_ms_mean", variable)) %>%
-  mutate(datetime = as.Date(datetime)) %>%
-  group_by(datetime, variable, parameter) %>%
-  summarise(sum_pred = sum(prediction),
-            prediction = mean(prediction)) %>%
-  mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction))
+  convert_to_vera_met_P1D() %>%
+  mutate(site_id = "fcre")
 
 weather_hist <- RopenMeteo::get_historical_weather(
   latitude = lat,
@@ -73,26 +56,8 @@ weather_hist <- RopenMeteo::get_historical_weather(
   # function to convert to EFI standard
   RopenMeteo::convert_to_efi_standard() |>
   # rename variables to match met station
-  mutate(site_id = 'fcre',
-         variable = ifelse(variable == "air_temperature", 
-                           "AirTemp_C_mean", variable),
-         prediction = ifelse(variable == "AirTemp_C_mean",
-                           prediction - 273.15, prediction), #Update units from K
-         variable = ifelse(variable == "precipitation_flux", 
-                           "Rain_mm_sum", variable),
-         prediction = ifelse(variable == "Rain_mm_sum",
-                           prediction * 60 * 60, prediction), #Not sure of units
-         variable = ifelse(variable == "relative_humidity", 
-                           "RH_percent_mean", variable),
-         prediction = ifelse(variable == "RH_percent_mean",
-                           prediction * 100, prediction), #Update units to %
-         variable = ifelse(variable == "wind_speed", 
-                           "WindSpeed_ms_mean", variable)) %>%
-  mutate(datetime = as.Date(datetime)) %>%
-  group_by(datetime, variable) %>%
-  summarise(sum_pred = sum(prediction),
-            prediction = mean(prediction)) %>%
-  mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction))
+  convert_to_vera_met_P1D() %>%
+  mutate(site_id = "fcre")
 ```
 
 ## Compare recent weather with observations

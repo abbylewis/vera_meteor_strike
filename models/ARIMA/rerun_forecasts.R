@@ -1,4 +1,4 @@
-source("./ARIMA/forecast_model.R")
+source("./models/ARIMA/forecast_model.R")
 source("./R/rerun_forecasts.R")
 
 END <- as_date('2024-03-12') #Used to fix issues if needed
