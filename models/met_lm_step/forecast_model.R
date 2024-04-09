@@ -1,4 +1,4 @@
-# asl.temp.lm model
+# asl.met.lm.step model
 # written by ASL
 
 
@@ -13,9 +13,9 @@ source("./R/load_met.R") #need to update
 #library(forecast)
 
 #### Step 1: Set model specifications
-model_id <- "asl.temp.lm"
+model_id <- "asl.met.lm.step"
 # Currently only set up for daily variables, and not binary variables
-priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) |>
+priority_daily <- read_csv("priority_daily.csv", show_col_types = FALSE) %>%
   dplyr::filter(!grepl("binary", `"official" targets name`))
 model_variables <- priority_daily$`"official" targets name`
 # Global parameters used in generate_tg_forecast()
@@ -67,22 +67,36 @@ forecast_model <- function(specific_depth,
                    ". Skipping forecasts at this site."))
     return()
     
-  } else if(sum(!is.na(site_target$AirTemp_C_mean)&!is.na(site_target[var]))==0){
-    message(paste0("No historical air temp data that corresponds with target observations at site ",site,". Skipping forecasts at this site."))
+  } else if(sum(!is.na(site_target$AirTemp_C_mean) & 
+                !is.na(site_target$RH_percent_mean) &
+                !is.na(site_target$WindSpeed_ms_mean) &
+                !is.na(site_target$Rain_mm_sum) &
+                !is.na(site_target[var]))==0){
+    message(paste0("No complete met data that corresponds with target observations at site ",site,". Skipping forecasts at this site."))
     return()
     
   } else {
     # Fit linear model based on past data: target = m * air temp + b
-    fit <- lm(get(var) ~ AirTemp_C_mean, data = site_target) #THIS IS THE MODEL
+    all <- lm(get(var) ~ AirTemp_C_mean * 
+                RH_percent_mean * 
+                Rain_mm_sum *
+                WindSpeed_ms_mean, 
+              data = site_target) #THIS IS THE MODEL
+    
+    fit <- step(all, trace=0)
+    message(fit$coefficients)
     
     #  Get 30-day predicted temp ensemble at the site
-    noaa_future <- noaa_future_daily |>
+    noaa_future <- noaa_future_daily %>%
       filter(site_id==site)
     
     # use the linear model to forecast target variable for each ensemble member
     forecast <- noaa_future |> 
       mutate(site_id = site,
-             prediction = predict(fit, tibble(AirTemp_C_mean)), #THIS IS THE FORECAST STEP
+             prediction = predict(fit, tibble(AirTemp_C_mean, 
+                                              RH_percent_mean, 
+                                              Rain_mm_sum, 
+                                              WindSpeed_ms_mean)), #THIS IS THE FORECAST STEP
              variable = var)
     
     # Format results to EFI standard

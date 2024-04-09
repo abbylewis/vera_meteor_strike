@@ -131,7 +131,7 @@ generate_tg_forecast <- function(forecast_date,
   #  mutate(site_depth = paste0(site_id, "_", depth_m)) %>%
   #  ggplot(aes(x = datetime, y = prediction, color = parameter)) +
   #  geom_line(alpha=0.3) +
-  #  facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
+  #  facet_grid(rows = vars(variable), cols = vars(site_depth), scales = "free_y")
   
   # Submit
   vera4castHelpers::submit(forecast_file = forecast_file, first_submission = first_submission)

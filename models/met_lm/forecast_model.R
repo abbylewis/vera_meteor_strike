@@ -38,15 +38,27 @@ forecast_model <- function(specific_depth,
   
   message(paste0("Running depth: ", specific_depth))
 
-  # Merge in past NOAA data into the targets file, matching by date.
-  site_target <- target |>
+  # Filter to desired variable, site, date
+  site_target_trimmed <- target |>
     dplyr::mutate(datetime = as.Date(datetime)) |>
     dplyr::select(datetime, site_id, variable, observation, depth_m) |>
     dplyr::filter(variable == var, 
                   site_id == site,
-                  datetime < forecast_date) |>
+                  datetime < forecast_date)
+  
+  # Isolate target depth
+  if(is.na(specific_depth)){
+    site_target_raw = site_target_trimmed |> 
+      filter(is.na(depth_m))
+  } else {
+    site_target_raw = site_target_trimmed |>
+      dplyr::filter(depth_m == specific_depth)
+  }
+  
+  # Merge in past NOAA data into the targets file, matching by date.
+  site_target <- site_target_raw |>
     tidyr::pivot_wider(names_from = "variable", values_from = "observation") |>
-    dplyr::left_join(noaa_past_mean%>%
+    dplyr::left_join(noaa_past_mean|>
                        filter(site_id == site), 
                      by = c("datetime", "site_id"))
   
