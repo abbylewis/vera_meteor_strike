@@ -11,11 +11,9 @@ Simple empirical forecasts for the VERA forecasting challenge
 
 ## TO DO:
 
-1.  Working on met forecasts (load_met.R is not set up)
-2.  asl.temp.lm model
-3.  asl.temp.lm.all.sites model
-4.  asl.met.lm model (linear model with multiple met vars)
-5.  Figure out if we want to add auto_adam, nnetar
+1.  asl.temp.lm.all.sites model
+2.  asl.met.lm model (linear model with multiple met vars)
+3.  Figure out if we want to add auto_adam, nnetar
 
 ## To add new models
 
