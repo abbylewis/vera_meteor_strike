@@ -32,7 +32,8 @@ convert_to_vera_met_P1D <- function(df){
     mutate(datetime = as.Date(datetime)) %>%
     group_by_at(colnames(df)[colnames(df) != "prediction"]) %>%
     summarise(sum_pred = sum(prediction),
-              prediction = mean(prediction, na.rm = T)) %>%
+              prediction = mean(prediction, na.rm = T),
+              .groups = "drop") %>%
     mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction)) %>%
     select(-sum_pred)
 }

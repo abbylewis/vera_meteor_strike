@@ -7,6 +7,7 @@ Simple empirical forecasts for the VERA forecasting challenge
 -   asl.auto.arima
 -   asl.ets
 -   asl.tbats
+-   asl.temp.lm
 
 ## TO DO:
 

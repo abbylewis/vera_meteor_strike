@@ -1,76 +1,110 @@
-library(devtools)
-SourceURL <- "https://raw.githubusercontent.com/LTREB-reservoirs/vera4cast/main/drivers/download_ensemble_forecast.R"
-source_url(SourceURL)
+source("./R/convert_to_vera_met_P1D.R")
 
-load_met <- function(forecast_date, sites) {
+#' load_met
+#' 
+#' Currently only set up for real-time forecasts (i.e., not re-analysis)
+#'
+#' @param forecast_date reference date for forecast generation
+#' @param forecast_days days into the future to forecast
+#' @param site site
+#'
+#' @return no return. Exports historical and future met
+#'
+load_met <- function(site,
+                     forecast_date,
+                     forecast_days = 35) {
   
-  if(file.exists(paste0("./noaa_downloads/noaa_future_daily_",forecast_date,".csv"))){
-    message(paste0("Met data has already been saved for reference date: ",forecast_date))
-    return()
-  } else {
-    message(paste0("Forecasts not found, loading met data for: ",forecast_date))
+  message("Loading met data for site ", site)
+  
+  #Stop if too many sites
+  if(length(site) > 1) {
+    stop("length(site) > 1. Only one site can be loaded at a time.")
   }
   
-  #Date
-  noaa_date <- forecast_date - lubridate::days(1)  #Need to use yesterday's NOAA forecast because today's is not available yet
+  #Specify variables
+  variables <- c("relativehumidity_2m", 
+                 "precipitation", 
+                 "windspeed_10m", 
+                 "temperature_2m")
   
-  variables <- c('air_temperature',
-                 "surface_downwelling_longwave_flux_in_air",
-                 "surface_downwelling_shortwave_flux_in_air",
-                 "precipitation_flux",
-                 "air_pressure",
-                 "relative_humidity",
-                 "air_temperature",
-                 "northward_wind",
-                 "eastward_wind")
+  variables_renamed <- c("RH_percent_mean", 
+                         "Rain_mm_sum", 
+                         "WindSpeed_ms_mean", 
+                         "AirTemp_C_mean")
   
-  # Load stage 2 data
-  use_s3 <- arrow::s3_bucket("bio230121-bucket01/flare/drivers/met/ensemble_forecast",
-                         endpoint_override = "renc.osn.xsede.org",
-                         access_key = Sys.getenv("OSN_KEY"),
-                         secret_key = Sys.getenv("OSN_SECRET"))
-  
-  noaa_future <- arrow::open_dataset(use_s3) |>
-    dplyr::collect() |>
-    dplyr::filter(site_id %in% sites,
-                  datetime >= forecast_date,
-                  parameter <= 31,
-                  variable %in% variables) #It would be more efficient to filter before collecting, but this is not running on my M1 mac
-  
-  # Format met forecasts
-  noaa_future_daily <- noaa_future |> 
-    mutate(datetime = lubridate::as_date(datetime)) |> 
-    # mean daily forecasts at each site per ensemble
-    group_by(datetime, site_id, parameter, variable) |> 
-    summarize(prediction = mean(prediction)) |>
-    pivot_wider(names_from = variable, values_from = prediction) |>
-    # convert to Celsius
-    mutate(air_temperature = air_temperature - 273.15) |> 
-    select(datetime, site_id, all_of(variables), parameter)
-  write.csv(noaa_future_daily,paste0("./Generate_forecasts/noaa_downloads/noaa_future_daily_",forecast_date,".csv"),row.names = F) #Save the past meteorology
-  
-  # Load stage3 data. 
-  #The bucket is somewhat differently organized here, necessitating a different structure. 
-  #This will take a LONG TIME to load, especially if we are running all sites (I estimate 10 min on my computer)
-  load_stage3 <- function(site,endpoint,variables){
-    message('laod met for ', site)
-    use_bucket <- paste0("neon4cast-drivers/noaa/gefs-v12/stage3/parquet/", site)
-    use_s3 <- arrow::s3_bucket(use_bucket, endpoint_override = endpoint, anonymous = TRUE)
-    parquet_file <- arrow::open_dataset(use_s3) |>
-      dplyr::collect() |>
-      dplyr::filter(parameter <= 31,
-                    datetime >= lubridate::ymd('2017-01-01'),
-                    variable %in% variables)|> #It would be more efficient to filter before collecting, but this is not running on my M1 mac
-      na.omit() |> 
-      mutate(datetime = lubridate::as_date(datetime)) |> 
-      group_by(datetime, site_id, variable) |> 
-      summarize(prediction = mean(prediction, na.rm = TRUE), .groups = "drop") |> 
-      pivot_wider(names_from = variable, values_from = prediction) |> 
-      # convert air temp to C
-      mutate(air_temperature = air_temperature - 273.15)
+  #Load sites
+  site_list <- read_csv("https://raw.githubusercontent.com/LTREB-reservoirs/vera4cast/main/vera4cast_field_site_metadata.csv", 
+                        show_col_types = FALSE)
+  lat <- site_list$latitude[site_list$site_id == site]
+  long <-  site_list$longitude[site_list$site_id == site]
+  if(!site %in% site_list$site_id){
+    stop("Site not found in site list")
   }
   
-  noaa_past_mean <- map_dfr(all_sites, load_stage3,endpoint,variables)
-  write.csv(noaa_past_mean,paste0("./Generate_forecasts/noaa_downloads/noaa_past_mean_",forecast_date,".csv"),row.names = F) #Save the past meteorology
+  #Weather predictions
+  message("Loading weather predictions")
+  weather_pred <- RopenMeteo::get_ensemble_forecast(
+    latitude = lat,
+    longitude = long,
+    forecast_days = forecast_days, # days into the future
+    past_days = 92, # past days that can be used for model fitting
+    model = "gfs_seamless", # this is the NOAA gefs ensemble model
+    variables = variables) |> 
+    # function to convert to EFI standard
+    RopenMeteo::convert_to_efi_standard() |>
+    # rename variables to match met station
+    convert_to_vera_met_P1D() %>%
+    mutate(site_id = site)
+  
+  message("Loading historical weather")
+  weather_hist <- RopenMeteo::get_historical_weather(
+    latitude = lat,
+    longitude = long,
+    start_date = as.Date("2010-01-01"),
+    end_date = as.Date(Sys.Date()),
+    variables = variables) |> 
+    # function to convert to EFI standard
+    RopenMeteo::convert_to_efi_standard() |>
+    # rename variables to match met station
+    convert_to_vera_met_P1D() %>%
+    mutate(site_id = site)
+  
+  message("Adjusting forecasts to match historical data")
+  comparison_mod <- weather_hist %>%
+    rename(hist_pred = prediction) %>%
+    filter(!is.na(hist_pred)) %>%
+    left_join(weather_pred, by = c("datetime", "variable")) %>%
+    filter(!is.na(prediction)) %>%
+    mutate(datetime = as.Date(datetime)) %>%
+    group_by(datetime, variable) %>%
+    summarize(future_sd = sd(prediction),
+              future = mean(prediction),
+              hist = unique(hist_pred),
+              .groups = "drop")
+  
+  weather_pred_adjust <- weather_pred
+  for(var in variables_renamed){
+    lm <- lm(future ~ hist, data = comparison_mod %>% filter(variable == var))
+    weather_pred_adjust <- weather_pred_adjust %>%
+      mutate(prediction = ifelse(variable == var, 
+                             prediction - lm$coefficients[1] + (1-lm$coefficients[2]) * prediction, 
+                             prediction))
+  }
+  
+  #Filter to the future
+  weather_pred_export <- weather_pred_adjust %>%
+    filter(datetime >= forecast_date) %>%
+    pivot_wider(names_from = variable, values_from = prediction)
+  
+  write.csv(weather_pred_export,
+            paste0("./met_downloads/future_daily_",site,"_",
+                   forecast_date,".csv"),
+            row.names = F)
+  
+  write.csv(weather_hist %>%
+              pivot_wider(names_from = variable, values_from = prediction),
+            paste0("./met_downloads/past_daily_",site,"_",
+                   forecast_date,".csv"),
+            row.names = F)
   return()
 }

@@ -24,14 +24,24 @@ generate_tg_forecast <- function(forecast_date,
   }
   
   ### Step 2: Get NOAA driver data (if needed)
-  if(noaa){ #Some forecasts do not use any noaa driver data--> in that case skip download
+  if(noaa){ #Some forecasts do not use any noaa driver data --> in that case skip download
     forecast_date <- as.Date(forecast_date)
-    load_met(forecast_date) #This function loads meteorology if and only if it does not already exist
-    noaa_future_daily <- read.csv(paste0("./Generate_forecasts/noaa_downloads/noaa_future_daily_",forecast_date,".csv")) |> 
+    
+    #This function loads meteorology and harmonizes past/future predictions
+    map(sites, load_met, forecast_date = forecast_date) 
+    
+    #Identify available files
+    saved_met <- list.files(paste0("./met_downloads/"))
+    saved_met_relevant <- saved_met[grepl(paste0(sites, collapse = "|"), saved_met) & 
+                                      grepl(forecast_date, saved_met)]
+    #Load forecasts
+    noaa_future_daily <- read_csv(paste0("./met_downloads/",
+                                         saved_met_relevant[grepl("future", saved_met_relevant)])) |> 
       mutate(datetime = lubridate::as_date(datetime))
     
-    # Load stage3 data. 
-    noaa_past_mean <- read.csv(paste0("./Generate_forecasts/noaa_downloads/noaa_past_mean_",forecast_date,".csv")) |> 
+    # Load historical data
+    noaa_past_mean <- read_csv(paste0("./met_downloads/",
+                                         saved_met_relevant[grepl("past", saved_met_relevant)])) |> 
       mutate(datetime = lubridate::as_date(datetime))
     
   } else {
@@ -43,7 +53,7 @@ generate_tg_forecast <- function(forecast_date,
   ### Step 3: Download latest target data
   target_raw <- download_target()
   # Summarize to daily means
-  target<- target_raw |> 
+  target <- target_raw |> 
     mutate(datetime = as.Date(datetime)) |>
     group_by(site_id, variable, datetime, depth_m) |> 
     summarise(observation = mean(observation, na.rm = T),
@@ -108,13 +118,19 @@ generate_tg_forecast <- function(forecast_date,
   write_csv(forecast, forecast_file)
   
   #Visualize
-  forecast %>%
-    pivot_wider(names_from = "parameter", values_from = "prediction") %>%
-    mutate(site_depth = paste0(site_id, "_", depth_m)) %>%
-    ggplot(aes(x = datetime)) +
-    geom_line(aes(y = mu)) +
-    geom_ribbon(aes(ymin = mu - sigma, ymax = mu + sigma), alpha = 0.3) +
-    facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
+  #forecast %>%
+  #  pivot_wider(names_from = "parameter", values_from = "prediction") %>%
+  #  mutate(site_depth = paste0(site_id, "_", depth_m)) %>%
+  #  ggplot(aes(x = datetime)) +
+  #  geom_line(aes(y = mu)) +
+  #  geom_ribbon(aes(ymin = mu - sigma, ymax = mu + sigma), alpha = 0.3) +
+  #  facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
+  #
+  #forecast |> 
+  #  mutate(site_depth = paste0(site_id, "_", depth_m)) %>%
+  #  ggplot(aes(x = datetime, y = prediction, color = parameter)) +
+  #  geom_line(alpha=0.3) +
+  #  facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
   
   # Submit
   vera4castHelpers::submit(forecast_file = forecast_file, first_submission = FALSE)
