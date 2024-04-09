@@ -50,13 +50,18 @@ weather_dat <- RopenMeteo::get_ensemble_forecast(
          variable = ifelse(variable == "precipitation_flux", 
                            "Rain_mm_sum", variable),
          prediction = ifelse(variable == "Rain_mm_sum",
-                           prediction, prediction), #Not sure of units
+                           prediction * 60 * 60, prediction), #Not sure of units
          variable = ifelse(variable == "relative_humidity", 
                            "RH_percent_mean", variable),
          prediction = ifelse(variable == "RH_percent_mean",
                            prediction * 100, prediction), #Update units to %
          variable = ifelse(variable == "wind_speed", 
-                           "WindSpeed_ms_mean", variable))
+                           "WindSpeed_ms_mean", variable)) %>%
+  mutate(datetime = as.Date(datetime)) %>%
+  group_by(datetime, variable, parameter) %>%
+  summarise(sum_pred = sum(prediction),
+            prediction = mean(prediction)) %>%
+  mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction))
 
 weather_hist <- RopenMeteo::get_historical_weather(
   latitude = lat,
@@ -76,19 +81,24 @@ weather_hist <- RopenMeteo::get_historical_weather(
          variable = ifelse(variable == "precipitation_flux", 
                            "Rain_mm_sum", variable),
          prediction = ifelse(variable == "Rain_mm_sum",
-                           prediction, prediction), #Not sure of units
+                           prediction * 60 * 60, prediction), #Not sure of units
          variable = ifelse(variable == "relative_humidity", 
                            "RH_percent_mean", variable),
          prediction = ifelse(variable == "RH_percent_mean",
                            prediction * 100, prediction), #Update units to %
          variable = ifelse(variable == "wind_speed", 
-                           "WindSpeed_ms_mean", variable))
+                           "WindSpeed_ms_mean", variable)) %>%
+  mutate(datetime = as.Date(datetime)) %>%
+  group_by(datetime, variable) %>%
+  summarise(sum_pred = sum(prediction),
+            prediction = mean(prediction)) %>%
+  mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction))
 ```
 
 ## Compare recent weather with observations
 ```{r weather}
 #Join
-comparison <- weather_dat %>%
+comparison <- weather_dat  %>%
   filter(!is.na(prediction)) %>%
   left_join(target_raw) %>%
   filter(!is.na(observation)) 
@@ -119,11 +129,6 @@ comparison %>%
 ```{r hist}
 #Join
 comparison_hist <- weather_hist %>%
-  mutate(datetime = as.Date(datetime)) %>%
-  group_by(datetime, variable) %>%
-  summarise(sum_pred = sum(prediction),
-            prediction = mean(prediction)) %>%
-  mutate(prediction = ifelse(variable == "Rain_mm_sum", sum_pred, prediction)) %>%
   filter(!is.na(prediction)) %>%
   left_join(target_raw) %>%
   filter(!is.na(observation)) 
