@@ -9,7 +9,8 @@ generate_tg_forecast <- function(forecast_date,
                                  all_sites = all_sites, #Whether the model is /trained/ across all sites
                                  sites = sites, #Sites to forecast
                                  noaa = T,
-                                 target_depths = target_depths) {
+                                 target_depths = target_depths,
+                                 first_submission = FALSE) {
   
   ### Step 1: Set forecast specifications
   horiz = 35
@@ -133,5 +134,5 @@ generate_tg_forecast <- function(forecast_date,
   #  facet_grid(rows = vars(variable), cols = vars(site_id), scales = "free_y")
   
   # Submit
-  vera4castHelpers::submit(forecast_file = forecast_file, first_submission = FALSE)
+  vera4castHelpers::submit(forecast_file = forecast_file, first_submission = first_submission)
 }

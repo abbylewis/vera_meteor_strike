@@ -1,0 +1,24 @@
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 20 * * *"
+#  push:
+
+name: ASL meteor strike - temp lm
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rqthomas/vera-rocker:latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: install R packages
+        run: R -e 'source("./R/install.R")' 
+      - name: Run automatic prediction file (met_lm)
+        run: Rscript ./models/met_lm/run_forecast.R
+      #- name: Back fill forecasts
+      #  run: Rscript ./models/met_lm/rerun_forecasts.R

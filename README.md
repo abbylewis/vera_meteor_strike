@@ -8,12 +8,11 @@ Simple empirical forecasts for the VERA forecasting challenge
 -   asl.ets
 -   asl.tbats
 -   asl.temp.lm
+-   asl.met.lm
 
 ## TO DO:
 
-1.  asl.temp.lm.all.sites model
-2.  asl.met.lm model (linear model with multiple met vars)
-3.  Figure out if we want to add auto_adam, nnetar
+1.  Figure out if we want to add auto_adam, nnetar
 
 ## To add new models
 
