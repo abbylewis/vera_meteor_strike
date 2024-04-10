@@ -9,6 +9,7 @@ Simple empirical forecasts for the VERA forecasting challenge
 -   asl.tbats
 -   asl.temp.lm
 -   asl.met.lm
+-   asl.met.lm.step
 
 ## TO DO:
 
