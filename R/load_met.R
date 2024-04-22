@@ -100,11 +100,15 @@ load_met <- function(site,
             paste0("./met_downloads/future_daily_",site,"_",
                    forecast_date,".csv"),
             row.names = F)
+  message("Saved ", paste0("./met_downloads/future_daily_",site,"_",
+                           forecast_date,".csv"))
   
   write.csv(weather_hist %>%
               pivot_wider(names_from = variable, values_from = prediction),
             paste0("./met_downloads/past_daily_",site,"_",
                    forecast_date,".csv"),
             row.names = F)
+  message("Saved ", paste0("./met_downloads/future_daily_",site,"_",
+                           forecast_date,".csv"))
   return()
 }
