@@ -96,9 +96,6 @@ load_met <- function(site,
     filter(datetime >= forecast_date) %>%
     pivot_wider(names_from = variable, values_from = prediction)
   
-  if(!dir.exists("met_downloads")){
-    dir.create("met_downloads")
-  }
   write.csv(weather_pred_export,
             paste0("./met_downloads/future_daily_",site,"_",
                    forecast_date,".csv"),
