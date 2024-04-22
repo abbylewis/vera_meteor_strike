@@ -35,7 +35,7 @@ generate_tg_forecast <- function(forecast_date,
     saved_met <- list.files(paste0("./met_downloads/"))
     saved_met_relevant <- saved_met[grepl(paste0(sites, collapse = "|"), saved_met) & 
                                       grepl(forecast_date, saved_met)]
-    message(saved_met_relevant)
+
     #Load forecasts
     noaa_future_daily <- read_csv(paste0("./met_downloads/",
                                          saved_met_relevant[grepl("future", saved_met_relevant)])) |> 
