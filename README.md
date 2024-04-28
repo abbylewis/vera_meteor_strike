@@ -1,6 +1,6 @@
 # VERA meteor strike
 
-Simple empirical forecasts for the VERA forecasting challenge
+Simple empirical forecasts for the VERA forecasting challenge (<https://www.ltreb-reservoirs.org/>)
 
 ## Models currently set up:
 
