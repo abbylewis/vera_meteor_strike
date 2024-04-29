@@ -1,6 +1,7 @@
 source("./R/run_all_sites.R")
 source("./R/run_all_depths.R")
 source("./R/load_met.R")
+source("./R/convert_continuous_binary.R")
 
 generate_tg_forecast <- function(forecast_date,
                                  forecast_model,
@@ -113,11 +114,38 @@ generate_tg_forecast <- function(forecast_date,
                         target_depths = target_depths)
   }
   
+  #Function to map all sites
+  map_convert <- function(site, forecast, targets){
+    if(!site %in% c("bvre", "fcre")){
+      warning("The binary conversion function is only set up to set up 1.6m at FCR and 1.5m at BVR")
+      return()
+    }
+    if(site == "bvre"){depth_assigned <- 1.5}
+    if(site == "fcre"){depth_assigned <- 1.6}
+    binary_forecast_chla <- convert_continuous_binary(
+      continuous_var = 'Chla_ugL_mean',
+      binary_var = 'Bloom_binary_mean',
+      forecast = forecast,
+      targets = targets,
+      site = site,
+      depth = depth_assigned,
+      threshold = 20)
+  }
+  
+  #Run all depths and sites
+  binary_forecasts <- purrr::map_dfr(.x = sites,
+                                     .f = ~map_convert(
+                                       site = .x,
+                                       forecast = forecast,
+                                       targets = target))
+  
+  forecast_comb <- rbind(forecast, binary_forecasts)
+  
   ### Step 5: Format and submit
   
   # Write forecast to disk
   forecast_file <- paste0("daily-", forecast_date, "-", model_id, ".csv.gz")
-  write_csv(forecast, forecast_file)
+  write_csv(forecast_comb, forecast_file)
   
   #Visualize
   #forecast %>%
