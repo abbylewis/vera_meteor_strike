@@ -9,7 +9,7 @@ library(tidyverse)
 library(vera4castHelpers)
 library(read4cast)
 source("./R/download_target.R")
-source("./R/load_met.R") #need to update
+source("./R/load_met.R")
 #library(forecast)
 
 #### Step 1: Set model specifications

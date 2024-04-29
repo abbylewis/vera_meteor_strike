@@ -14,6 +14,8 @@ Simple empirical forecasts for the VERA forecasting challenge (<https://www.ltre
 ## TO DO:
 
 1.  Figure out if we want to add auto_adam, nnetar
+2.  Load inflow targets
+3.  Binary variables
 
 ## To add new models
 
