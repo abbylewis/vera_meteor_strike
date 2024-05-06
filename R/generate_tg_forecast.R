@@ -141,6 +141,8 @@ generate_tg_forecast <- function(forecast_date,
   
   forecast_comb <- rbind(forecast, binary_forecasts)
   
+  forecast_comb$model_id <- model_id
+  
   ### Step 5: Format and submit
   
   # Write forecast to disk
