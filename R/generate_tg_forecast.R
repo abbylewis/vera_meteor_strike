@@ -130,6 +130,9 @@ generate_tg_forecast <- function(forecast_date,
       site = site,
       depth = depth_assigned,
       threshold = 20)
+    
+    binary_forecast_chla <- binary_forecast_chla |> 
+      mutate(variable = ifelse(variable == 'Chla_ugL_mean', 'Bloom_binary_mean', variable))
   }
   
   #Run all depths and sites
