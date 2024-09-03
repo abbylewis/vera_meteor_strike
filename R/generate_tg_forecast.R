@@ -114,7 +114,7 @@ generate_tg_forecast <- function(forecast_date,
                         target_depths = target_depths)
   }
   
-  #Function to map all sites
+  #Function to map all sites for binary
   map_convert <- function(site, forecast, targets){
     if(!site %in% c("bvre", "fcre")){
       warning("The binary conversion function is only set up to set up 1.6m at FCR and 1.5m at BVR")
@@ -132,7 +132,7 @@ generate_tg_forecast <- function(forecast_date,
       threshold = 20)
   }
   
-  #Run all depths and sites
+  #Run binary at all depths and sites
   binary_forecasts <- purrr::map_dfr(.x = sites,
                                      .f = ~map_convert(
                                        site = .x,
